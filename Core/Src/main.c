@@ -49,7 +49,7 @@
 
 /* USER CODE BEGIN PV */
 SD_HandleTypeDef hsd1;
-char txBuffer[250];
+char txBuffer[300];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,7 +57,7 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
 static void SDIO_SDCard_Test();
-
+static FRESULT list_files(const char *path);
 
 static void usb_cdc_printf(char *txtStr) {
 	while(CDC_Transmit_HS((uint8_t*)txtStr, strlen(txtStr)) == USBD_BUSY) {
@@ -119,6 +119,12 @@ int main(void)
 
   HAL_Delay(5000);
   SDIO_SDCard_Test();
+//  if(list_files("") != FR_OK) {
+//	  sprintf(txBuffer, "Error listing files\r\n");
+//	  usb_cdc_printf(txBuffer);
+//	  while(1);
+//  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -194,6 +200,52 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+static FRESULT list_files(const char *path) {
+	FRESULT fRes;
+	DIR dir;
+	FILINFO fno;
+	int nFile, nDir;
+
+	fRes = f_opendir(&dir, path);	// Open the directory
+	if(fRes == FR_OK) {
+		nFile = nDir = 0;
+		for(;;) {
+			fRes = f_readdir(&dir, &fno);					// Read a directory item
+			if(fRes != FR_OK || fno.fname[0] == 0) break;	// Error or end of dir
+			if(fno.fattrib & AM_DIR) {
+				sprintf(txBuffer, "    <DIR>    %s\r\n", fno.fname);
+				usb_cdc_printf(txBuffer);
+				nDir++;
+			} else {
+				sprintf(txBuffer, "%.1fMB %s   ", (float)fno.fsize / 1000000.0, fno.fname);
+				usb_cdc_printf(txBuffer);
+
+				sprintf(txBuffer, "Timestamp: %u-%02u-%02u, %02u:%02u  ",
+						(fno.fdate >> 9) + 1980, fno.fdate >> 5 & 15, fno.fdate & 31,
+						fno.ftime >> 11, fno.ftime >> 5 & 63);
+				usb_cdc_printf(txBuffer);
+
+				sprintf(txBuffer, "Attributes: %c%c%c%c%c\r\n",
+						(fno.fattrib & AM_DIR) ? 'D' : '-',
+						(fno.fattrib & AM_RDO) ? 'R' : '-',
+						(fno.fattrib & AM_HID) ? 'H' : '-',
+						(fno.fattrib & AM_SYS) ? 'S' : '-',
+						(fno.fattrib & AM_ARC) ? 'A' : '-');
+				usb_cdc_printf(txBuffer);
+				nFile++;
+			}
+		}
+		f_closedir(&dir);
+		sprintf(txBuffer, "%d dirs, %d files.\r\n", nDir, nFile);
+		usb_cdc_printf(txBuffer);
+	} else {
+		sprintf(txBuffer, "Failed to open \"%s\". (%u)\r\n", path, fRes);
+		usb_cdc_printf(txBuffer);
+	}
+
+	return fRes;
+}
+
 static void SDIO_SDCard_Test() {
 	FATFS fatFS;
 	FIL fil;
@@ -223,7 +275,7 @@ static void SDIO_SDCard_Test() {
 		sprintf(txBuffer, "Free SD card space: %lu Bytes\r\n\n", freeSpace);
 		usb_cdc_printf(txBuffer);
 	} while(0);
-
+	list_files("");
 	// Test complete! unmount SD the card
 	frStatus = f_mount(NULL, "", 0);
 	if(frStatus != FR_OK) {
