@@ -50,6 +50,29 @@
 /* USER CODE BEGIN PV */
 SD_HandleTypeDef hsd1;
 char txBuffer[300];
+
+typedef struct {
+	// RIFF Header
+	char chunkID[4];
+	uint32_t chunkSize;
+	char format[4];
+
+	// fmt chunk
+	char subchunk1ID[4];
+	uint32_t subchunk1Size;
+	uint16_t audioFormat;
+	uint16_t numChannels;
+	uint32_t sampleRate;
+	uint32_t byteRate;
+	uint16_t blockAlign;
+	uint16_t bitsPerSample;
+
+	// data chunk (only the header part)
+	char subchunk2ID[4];
+	uint32_t subchunk2Size;
+}WAV_Header_t;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,6 +86,43 @@ static void usb_cdc_printf(char *txtStr) {
 	while(CDC_Transmit_HS((uint8_t*)txtStr, strlen(txtStr)) == USBD_BUSY) {
 
 	}
+}
+
+void printWAVHeader(const WAV_Header_t *header) {
+	sprintf(txBuffer, "RIFF Header:\r\n");
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Chunk ID: %.4s\r\n", header->chunkID);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Chunk Size: %u\r\n", header->chunkSize);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Format: %.4s\r\n", header->format);
+	usb_cdc_printf(txBuffer);
+
+	sprintf(txBuffer, "\nfmt Chunk:\r\n");
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Subchunk1 ID: %.4s\r\n", header->subchunk1ID);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Subchunk1 Size: %u\r\n", header->subchunk1Size);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Audio Format: %u\r\n", header->audioFormat);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Number of Channels: %u\r\n", header->numChannels);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Sample rate: %u\r\n", header->sampleRate);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Byte Rate: %u\r\n", header->byteRate);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Block Align: %u\r\n", header->blockAlign);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Bits per Sample: %u\r\n", header->bitsPerSample);
+	usb_cdc_printf(txBuffer);
+
+	sprintf(txBuffer, "\ndata Chunk:\r\n");
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Subchunk2 ID: %.4s\r\n", header->subchunk2ID);
+	usb_cdc_printf(txBuffer);
+	sprintf(txBuffer, " Subchunk2 Size: %u\r\n", header->subchunk2Size);
+	usb_cdc_printf(txBuffer);
 }
 
 /* USER CODE END PFP */
@@ -116,6 +176,46 @@ int main(void)
   MX_SDMMC2_SD_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+
+  FATFS fs;
+  FIL file;
+  FRESULT res;
+  UINT bytesRead;
+  char fileName[] = "0:/One-Piece-OST-Overtaken.wav";
+
+  // Mount the file system
+  res = f_mount(&fs, "", 1);
+  if(res != FR_OK) {
+	  usb_cdc_printf("Failed to mount the filesystem.\r\n");
+	  return -1;
+  }
+
+  // Open the file
+  res = f_open(&file, fileName, FA_READ);
+  if(res != FR_OK) {
+	  usb_cdc_printf("Failed to open the file.\r\n");
+	  return -1;
+  }
+
+  WAV_Header_t wavHeader;
+
+  // Read the combined WAV Header
+  res = f_read(&file, &wavHeader, sizeof(wavHeader), &bytesRead);
+  if(res != FR_OK || bytesRead != sizeof(wavHeader)) {
+	  usb_cdc_printf("Failed to read WAV Header.\r\n");
+	  return -1;
+  }
+
+  // Print the WAV header information
+  printWAVHeader(&wavHeader);
+
+  // Close the file
+  f_close(&file);
+
+  // Unmount the filesystem
+  f_mount(NULL, "", 1);
+
+  for(;;);
 
   HAL_Delay(5000);
   SDIO_SDCard_Test();
