@@ -88,42 +88,66 @@ static void usb_cdc_printf(char *txtStr) {
 	}
 }
 
-void printWAVHeader(const WAV_Header_t *header) {
+int printWAVHeader(const char *filename) {
+	FIL file;
+	FRESULT res;
+	UINT bytesRead;
+
+	WAV_Header_t header;
+
+	sprintf(txBuffer, "\r\nOpening WAV file: %s\r\n", filename);
+	usb_cdc_printf(txBuffer);
+
+	// Open the file
+	res = f_open(&file, filename, FA_READ);
+	if(res != FR_OK) {
+	  usb_cdc_printf("Failed to open the file.\r\n");
+	  return -1;
+	}
+
+	// Read the combined WAV Header
+	res = f_read(&file, &header, sizeof(header), &bytesRead);
+	if(res != FR_OK || bytesRead != sizeof(header)) {
+	  usb_cdc_printf("Failed to read WAV Header.\r\n");
+	  return -1;
+	}
+
 	sprintf(txBuffer, "RIFF Header:\r\n");
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Chunk ID: %.4s\r\n", header->chunkID);
+	sprintf(txBuffer, " Chunk ID: \"%.4s\"\r\n", header.chunkID);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Chunk Size: %u\r\n", header->chunkSize);
+	sprintf(txBuffer, " Chunk Size: %u\r\n", header.chunkSize);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Format: %.4s\r\n", header->format);
+	sprintf(txBuffer, " Format: \"%.4s\"\r\n", header.format);
 	usb_cdc_printf(txBuffer);
 
 	sprintf(txBuffer, "\nfmt Chunk:\r\n");
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Subchunk1 ID: %.4s\r\n", header->subchunk1ID);
+	sprintf(txBuffer, " Subchunk1 ID: \"%.4s\"\r\n", header.subchunk1ID);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Subchunk1 Size: %u\r\n", header->subchunk1Size);
+	sprintf(txBuffer, " Subchunk1 Size: %u\r\n", header.subchunk1Size);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Audio Format: %u\r\n", header->audioFormat);
+	sprintf(txBuffer, " Audio Format: %u\r\n", header.audioFormat);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Number of Channels: %u\r\n", header->numChannels);
+	sprintf(txBuffer, " Number of Channels: %u\r\n", header.numChannels);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Sample rate: %u\r\n", header->sampleRate);
+	sprintf(txBuffer, " Sample rate: %u\r\n", header.sampleRate);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Byte Rate: %u\r\n", header->byteRate);
+	sprintf(txBuffer, " Byte Rate: %u\r\n", header.byteRate);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Block Align: %u\r\n", header->blockAlign);
+	sprintf(txBuffer, " Block Align: %u\r\n", header.blockAlign);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Bits per Sample: %u\r\n", header->bitsPerSample);
+	sprintf(txBuffer, " Bits per Sample: %u\r\n", header.bitsPerSample);
 	usb_cdc_printf(txBuffer);
 
 	sprintf(txBuffer, "\ndata Chunk:\r\n");
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Subchunk2 ID: %.4s\r\n", header->subchunk2ID);
+	sprintf(txBuffer, " Subchunk2 ID: \"%.4s\"\r\n", header.subchunk2ID);
 	usb_cdc_printf(txBuffer);
-	sprintf(txBuffer, " Subchunk2 Size: %u\r\n", header->subchunk2Size);
+	sprintf(txBuffer, " Subchunk2 Size: %u\r\n", header.subchunk2Size);
 	usb_cdc_printf(txBuffer);
 }
+
 
 /* USER CODE END PFP */
 
@@ -176,12 +200,10 @@ int main(void)
   MX_SDMMC2_SD_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(5000);
 
   FATFS fs;
-  FIL file;
   FRESULT res;
-  UINT bytesRead;
-  char fileName[] = "0:/One-Piece-OST-Overtaken.wav";
 
   // Mount the file system
   res = f_mount(&fs, "", 1);
@@ -190,34 +212,19 @@ int main(void)
 	  return -1;
   }
 
-  // Open the file
-  res = f_open(&file, fileName, FA_READ);
-  if(res != FR_OK) {
-	  usb_cdc_printf("Failed to open the file.\r\n");
-	  return -1;
-  }
-
-  WAV_Header_t wavHeader;
-
-  // Read the combined WAV Header
-  res = f_read(&file, &wavHeader, sizeof(wavHeader), &bytesRead);
-  if(res != FR_OK || bytesRead != sizeof(wavHeader)) {
-	  usb_cdc_printf("Failed to read WAV Header.\r\n");
-	  return -1;
-  }
-
   // Print the WAV header information
-  printWAVHeader(&wavHeader);
-
-  // Close the file
-  f_close(&file);
+//  printWAVHeader("Super-Mario-Bros-Theme-Song.wav");
+//  printWAVHeader("Naruto-Main-Theme.wav");
+  printWAVHeader("Naruto-Theme-The-Raising-Fighting-Spirit.wav");
+  printWAVHeader("One-Piece-OST-Overtaken.wav");
+  printWAVHeader("One-Piece-OST-The-Very-Very-Strongest.wav");
 
   // Unmount the filesystem
   f_mount(NULL, "", 1);
 
   for(;;);
 
-  HAL_Delay(5000);
+
   SDIO_SDCard_Test();
 //  if(list_files("") != FR_OK) {
 //	  sprintf(txBuffer, "Error listing files\r\n");
