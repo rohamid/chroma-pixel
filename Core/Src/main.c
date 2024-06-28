@@ -18,7 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "fatfs.h"
+#include "i2s.h"
 #include "sdmmc.h"
 #include "usb_device.h"
 #include "gpio.h"
@@ -170,14 +172,6 @@ int main(void)
   /* MPU Configuration--------------------------------------------------------*/
   MPU_Config();
 
-  /* Enable the CPU Cache */
-
-  /* Enable I-Cache---------------------------------------------------------*/
-  SCB_EnableICache();
-
-  /* Enable D-Cache---------------------------------------------------------*/
-  SCB_EnableDCache();
-
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -196,11 +190,16 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USB_DEVICE_Init();
+  MX_DMA_Init();
   MX_SDMMC2_SD_Init();
   MX_FATFS_Init();
+  MX_I2S1_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(5000);
+
+  HAL_GPIO_WritePin(LCD_BLK_GPIO_Port, LCD_BLK_Pin, GPIO_PIN_SET);
+  for(;;);
 
   FATFS fs;
   FRESULT res;
@@ -213,16 +212,15 @@ int main(void)
   }
 
   // Print the WAV header information
-//  printWAVHeader("Super-Mario-Bros-Theme-Song.wav");
+  printWAVHeader("Super-Mario-Bros-Theme-Song-mono.wav");
 //  printWAVHeader("Naruto-Main-Theme.wav");
-  printWAVHeader("Naruto-Theme-The-Raising-Fighting-Spirit.wav");
-  printWAVHeader("One-Piece-OST-Overtaken.wav");
-  printWAVHeader("One-Piece-OST-The-Very-Very-Strongest.wav");
+//  printWAVHeader("Naruto-Theme-The-Raising-Fighting-Spirit.wav");
+//  printWAVHeader("One-Piece-OST-Overtaken.wav");
+//  printWAVHeader("One-Piece-OST-The-Very-Very-Strongest.wav");
 
   // Unmount the filesystem
   f_mount(NULL, "", 1);
 
-  for(;;);
 
 
   SDIO_SDCard_Test();
